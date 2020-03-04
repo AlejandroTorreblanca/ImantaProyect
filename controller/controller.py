@@ -3,47 +3,79 @@ import asyncio
 
 class Controller:
     """
-    Class controller, synchronizes the tasks.
+    Class controller, Singleton pattern, synchronizes the tasks.
     """
-    def __init__(self, tasks, loop):
-        self._events = []                   # List to save one event to wake up the task, and one event to inform that
-        # the task has finished.
-        self._finalevent = asyncio.Event()  # The tasks will use this event to wake up the controller
-        self._faillist = set()              # Set of failed tasks
-        self._skippedlist = set()           # Set of skipped tasks
-        self._finishedtasks = set()         # Set of finished tasks
-        self._taskslist = tasks             # List of tasks
-        self._loop = loop                   # Event loop
+    __instance = None
 
-    def starttasks(self):
+    @staticmethod
+    def getinstance():
+        """
+        Static access method to get the instance oh the controller.
+        :return: Unique instance of the controller class
+        """
+        if Controller.__instance is None:
+            Controller()
+        return Controller.__instance
+
+    def __init__(self):
+        """
+        Virtually private constructor.
+        """
+        if Controller.__instance is not None:
+            raise Exception("The class Controller is a singleton, you must get the instance using 'getinstance()'")
+        else:
+            Controller.__instance = self
+            self.__events = []      # List to save one event for every task, use this event to wake up the task
+            self.__messages = []    # List of messages of the finished tasks
+            self.__finalevent = asyncio.Event()     # The tasks will use this event to wake up the controller
+            self.__faillist = set()                 # Set of failed tasks
+            self.__skippedlist = set()              # Set of skipped tasks
+            self.__finishedtasks = set()            # Set of finished tasks
+            self.__taskslist = None                 # List of tasks
+            self.__loop = asyncio.get_event_loop()  # Event loop
+
+    def sendmessage(self, message):
+        """
+        Tasks will use this function to report the status, adds the message to the list of messages
+        :param message: List of tow elements, first the name of the task and second the status
+        :return: None
+        """
+        self.__messages.append(message)
+
+    def end(self):
+        """
+        Ends the loop before close the application
+        :return: None
+        """
+        self.__loop.close()
+
+    def starttasks(self, tasks):
         """
         Adds all the tasks to the event loop.
         :return: None
         """
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.coordinatetasks())    # Task to coordinate the rest of the tasks
-        for task in self._taskslist:
-            doneevent = asyncio.Event()     # The task will use this event to inform that it has finished
+        self.__taskslist = tasks
+        self.__loop.create_task(self.coordinatetasks())    # Task to coordinate the rest of the tasks
+        for task in self.__taskslist:
             if task.hasdependencies():
                 waitevent = asyncio.Event()     # The task will wait for this event
-                self._events.append([waitevent, doneevent, task])
-                loop.create_task(task.executetask(waitevent, doneevent, self._finalevent))  # We create a single
+                self.__events.append([waitevent, task])
+                self.__loop.create_task(task.executetask(waitevent, self.__finalevent))  # We create a single
                 # process for every task
             else:
-                self._events.append([None, doneevent, task])    # The task does not have to wait, no dependencies
-                loop.create_task(task.executetask(None, doneevent, self._finalevent))
-        loop.run_forever()
+                self.__loop.create_task(task.executetask(None, self.__finalevent))
+        self.__loop.run_forever()
 
     def printresults(self):
         """
-            This function print the result of the tasks
+            Prints the result of the tasks
         """
         print()
-        for t in self._finishedtasks:
+        for t in self.__finishedtasks:
             print(t + " OK")
-        for t in self._faillist:
+        for t in self.__faillist:
             print(t + " FAILED")
-        for t in self._skippedlist:
+        for t in self.__skippedlist:
             print(t + " SKIPPED")
 
     async def coordinatetasks(self):
@@ -53,35 +85,35 @@ class Controller:
         :return: None
         """
         ended = 0   # Number of ended tasks
-        while ended < len(self._taskslist):
-            await self._finalevent.wait()   # Wait until one task finish
-            for event in self._events:
-                if event[1].is_set():       # If this task has finished we save the status
-                    if event[2].getstatus() == "ok":
-                        self._finishedtasks.add(event[2].getname())
-                    elif event[2].getstatus() == "skip":
-                        self._skippedlist.add(event[2].getname())
-                    elif event[2].getstatus() == "fail":
-                        self._faillist.add(event[2].getname())
-                    self._events.remove(event)
+        while ended < len(self.__taskslist):
+            await self.__finalevent.wait()   # Wait until one task finish
+            for message in self.__messages:
+                if message[1] == "ok":
+                    self.__finishedtasks.add(message[0])
+                elif message[1] == "skip":
+                    self.__skippedlist.add(message[0])
+                elif message[1] == "fail":
+                    self.__faillist.add(message[0])
+                self.__messages.remove(message)
+                ended += 1
+            for event in self.__events:     # Checks if some task can start or if some task should be skipped
+                if event[1].getdependencies().issubset(self.__finishedtasks):
+                    event[0].set()  # If all the dependencies are done, we send a signal to start the task
+                    self.__events.remove(event)
+                elif len(event[1].getdependencies().intersection(self.__faillist)) > 0 \
+                        or len(event[1].getdependencies().intersection(self.__skippedlist)) > 0:
+                    self.__skippedlist.add(event[1].getname())
+                    self.__events.remove(event)
                     ended += 1
-            for event in self._events:
-                if event[2].hasdependencies():
-                    if event[2].getdependencies().issubset(self._finishedtasks):
-                        event[0].set()  # If all the dependencies are done, we send a signal to start the task
-                    elif len(event[2].getdependencies().intersection(self._faillist)) > 0 \
-                            or len(event[2].getdependencies().intersection(self._skippedlist)) > 0:
-                        self._skippedlist.add(event[2].getname())
-                        self._events.remove(event)
-                        ended += 1
-            self._finalevent.clear()    # Resets the signal, the controller will wait again until another task ends
+            self.__finalevent.clear()    # Resets the signal, the controller will wait again until another task ends
 
-        for task in asyncio.Task.all_tasks():   # Cancel all the skipped tasks
+        for task in asyncio.Task.all_tasks():   # Cancels all the skipped tasks
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 print("Cancelled task without finishing.")
-        self._loop.stop()
+        self.__loop.stop()
+
 
 

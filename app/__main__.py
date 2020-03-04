@@ -1,10 +1,9 @@
 import json
 import jsonschema
 from jsonschema import validate
-import asyncio
 
-from controller.controller import Controller
 from model.task import Task
+from controller.controller import Controller
 
 
 def createtasks(tasklistinput):
@@ -44,11 +43,10 @@ def __main__():
     """
     taskslist = readfile()
     tasks = createtasks(taskslist["tasks"])
-    loop = asyncio.get_event_loop()
-    controller = Controller(tasks, loop)
-    controller.starttasks()
+    controller = Controller.getinstance()
+    controller.starttasks(tasks)
     controller.printresults()
-    loop.close()
+    controller.end()
 
 
 __main__()

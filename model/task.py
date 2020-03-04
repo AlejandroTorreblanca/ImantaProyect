@@ -1,90 +1,92 @@
 import asyncio
 import sys
 
+from controller.controller import Controller
+
 
 class Task:
     """
     Class Task, represents a task which we want to execute.
     """
     def __init__(self, name, tasktype, arguments, dependencies):
-        self._name = name               # Name of the task
-        self._type = tasktype           # Type of the task
-        self._arguments = arguments     # Arguments of the task
+        self.__name = name               # Name of the task
+        self.__type = tasktype           # Type of the task
+        self.__arguments = arguments     # Arguments of the task
         if dependencies is not None and len(dependencies) > 0:
-            self._dependencies = set()  # Dependencies of the task
+            self.__dependencies = set()  # Dependencies of the task
             for dep in dependencies:
-                self._dependencies.add(dep)
+                self.__dependencies.add(dep)
         else:
-            self._dependencies = None
-        self._taskstatus = "waiting"    # Status of the task, when the task ends it can be "ok", "fail" or "skip"
+            self.__dependencies = None
+        self.__taskstatus = "waiting"    # Status of the task, when the task ends it can be "ok", "fail" or "skip"
 
     def getname(self):
         """
         Gets the name of the task
         :return: Task's name
         """
-        return self._name
+        return self.__name
 
     def getstatus(self):
         """
         Gets the status of the task
         :return: Task's status
         """
-        return self._taskstatus
+        return self.__taskstatus
 
     def getdependencies(self):
         """
         Gets the dependencies of the task
         :return: Task's dependencies
         """
-        return self._dependencies
+        return self.__dependencies
 
     def hasdependencies(self):
         """
         Checks if the task has dependencies
         :return: True if the task has dependencies, false in other case
         """
-        if self._dependencies is not None:
+        if self.__dependencies is not None:
             return True
         return False
 
-    async def executetask(self, depencencesevent, doneevent, finalevent):
+    async def executetask(self, depencencesevent, finalevent):
         """
         This function execute the task arguments
         :return: None
         """
-        print("Started " + self._name)          # The task starts
+        print("Started " + self.__name)          # The task starts
         if depencencesevent is not None:
             await depencencesevent.wait()
-        if self._type == "exec":    # The task has shell commands
+        if self.__type == "exec":    # The task has shell commands
             try:
                 proc = await asyncio.create_subprocess_shell(
-                    self._arguments, stdout=asyncio.subprocess.PIPE)    # Execute the shell commands
+                    self.__arguments, stdout=asyncio.subprocess.PIPE)    # Execute the shell commands
                 await proc.wait()                                       # Wait until the instruction ends
                 if proc.returncode != 0:            # If the return code is not 0 we set the task as failed
-                    self._taskstatus = "fail"
+                    self.__taskstatus = "fail"
                 else:
                     lines = (await proc.communicate())[0].splitlines()
                     for line in lines:
                         print(line.strip())
-                    self._taskstatus = "ok"
+                    self.__taskstatus = "ok"
             except Exception as e:
                 print(e)
-                self._taskstatus = "fail"
+                self.__taskstatus = "fail"
         else:                           # The task has code snippet
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    sys.executable, '-c', self._arguments,
+                    sys.executable, '-c', self.__arguments,
                     stdout=asyncio.subprocess.PIPE)             # Execute the task code
                 await proc.wait()                               # Wait until the instruction ends
                 lines = (await proc.communicate())[0].splitlines()
                 for line in lines:
                     print(line.strip())
-                self._taskstatus = "ok"
+                self.__taskstatus = "ok"
             except Exception as e:
                 print(e)
-                self._taskstatus = "fail"
-        print("Ended " + self._name)
-        doneevent.set()                 # Informs that the current task is done
+                self.__taskstatus = "fail"
+        print("Ended " + self.__name)
+        Controller.getinstance().sendmessage([self.__name, self.__taskstatus])  # Informs that the current task is done
         finalevent.set()                # Wakes up the controller
 
