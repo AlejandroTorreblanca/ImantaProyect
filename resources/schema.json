@@ -1,0 +1,72 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://example.com/root.json",
+    "type": "object",
+    "title": "Task Schema",
+    "required": [
+      "tasks"
+    ],
+    "properties": {
+      "tasks": {
+        "$id": "#/properties/tasks",
+        "type": "array",
+        "title": "The Tasks Schema",
+        "items": {
+          "$id": "#/properties/tasks/items",
+          "type": "object",
+          "title": "The Items Schema",
+          "required": [
+            "name",
+            "type",
+            "arguments"
+          ],
+          "properties": {
+            "name": {
+              "$id": "#/properties/tasks/items/properties/name",
+              "type": "string",
+              "title": "The Name Schema",
+              "default": "",
+              "examples": [
+                "task1"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "type": {
+              "$id": "#/properties/tasks/items/properties/type",
+              "type": "string",
+              "title": "The Type Schema",
+              "default": "",
+              "examples": [
+                "exec"
+              ],
+              "enum":["exec","eval"]
+            },
+            "arguments": {
+              "$id": "#/properties/tasks/items/properties/arguments",
+              "type": "string",
+              "default": "",
+              "examples": [
+                "ls"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "dependencies": {
+                "$id": "#/properties/tasks/items/properties/dependencies",
+                "type": "array",
+                "items": {
+                  "$id": "#/properties/tasks/items/properties/dependencies/items",
+                  "type": "string",
+                  "title": "The Items Schema",
+                  "default": "",
+                  "examples": [
+                    "task1"
+                  ],
+                  "pattern": "^(.*)$"
+                }
+            }
+          }
+        }
+      }
+    }
+  }

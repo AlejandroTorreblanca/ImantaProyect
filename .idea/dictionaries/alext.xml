@@ -1,0 +1,35 @@
+<component name="ProjectDictionaryState">
+  <dictionary name="alext">
+    <words>
+      <w>coordinatetasks</w>
+      <w>createtasks</w>
+      <w>depencencesevent</w>
+      <w>dependences</w>
+      <w>doneevent</w>
+      <w>endedtasks</w>
+      <w>eventdepencences</w>
+      <w>eventfinish</w>
+      <w>executetask</w>
+      <w>faillist</w>
+      <w>finalevent</w>
+      <w>finishedtasks</w>
+      <w>getdependences</w>
+      <w>getdependencies</w>
+      <w>getname</w>
+      <w>hasdependences</w>
+      <w>hasdependencies</w>
+      <w>printresults</w>
+      <w>proc</w>
+      <w>skippedlist</w>
+      <w>starttasks</w>
+      <w>taskinput</w>
+      <w>tasklist</w>
+      <w>tasklistinput</w>
+      <w>tasksinput</w>
+      <w>taskslist</w>
+      <w>taskstatus</w>
+      <w>tasktype</w>
+      <w>waitevent</w>
+    </words>
+  </dictionary>
+</component>
